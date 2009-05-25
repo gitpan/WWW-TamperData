@@ -1,16 +1,8 @@
 WWW-TamperData
 
-The README is used to introduce the module and provide instructions on
-how to install the module, any machine dependencies it may have (for
-example C compilers and installed libraries) and any other information
-that should be provided before the module is installed.
-
-A README file is required for CPAN modules since CPAN extracts the README
-file from a module distribution so that people browsing the archive
-can use it to get an idea of the module's uses. It is usually a good idea
-to provide version information here so that people can decide whether
-fixes for the module are worth downloading.
-
+Tamperdata is an extension to the popular firefox browser which allows you to view and modify the 
+headers and parameters of web requests. WWW::Tamperdata allows you to replay, view or manipulate 
+tamperdata transcripts exported to xml files.
 
 INSTALLATION
 

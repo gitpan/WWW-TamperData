@@ -12,12 +12,12 @@ WWW::TamperData - Replay tamper data xml files!
 
 =head1 VERSION
 
-Version 0.01_1
+Version 0.02
 
 =cut
 
 # Globals
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 our $AUTHOR = 'Eldar Marcussen - http://www.justanotherhacker.com';
 our $_tamperagent;
 our $_tamperxml;
@@ -79,7 +79,7 @@ sub replay {
 Eldar Marcussen, C<< <japh at justanotherhacker.com> >>
 
 =head1 BUGS
-The module is currently in its infancy please be aware teh it currently only supports get requests and does not transmit headers
+The module is currently in its infancy please be aware that it currently only supports get requests and does not transmit headers
 
 Please report any bugs or feature requests to C<bug-www-tamperdata at rt.cpan.org>, or through
 the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=WWW-TamperData>.  I will be notified, and then you'll
