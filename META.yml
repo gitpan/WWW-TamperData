@@ -1,7 +1,7 @@
 --- #YAML:1.0
 name:                WWW-TamperData
-version:             0.02
-abstract:            Replay tamper data xml files!
+version:             0.05
+abstract:            Replay tamper data xml files
 license:             ~
 author:              
     - Eldar Marcussen <merliin@nastynerds.com>
