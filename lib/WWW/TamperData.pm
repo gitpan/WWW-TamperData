@@ -12,12 +12,12 @@ WWW::TamperData - Replay tamper data xml files
 
 =head1 VERSION
 
-Version 0.05
+Version 0.06
 
 =cut
 
 # Globals
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 our $AUTHOR = 'Eldar Marcussen - http://www.justanotherhacker.com';
 our $_tamperagent;
 our $_tamperxml;
@@ -38,7 +38,18 @@ Replaying a file can be as simple as:
 
 =head2 new
 
-Initializes the new object, it takes some arguments
+Initializes the new object, it takes some options;
+
+=over 4
+
+=item WWW::TamperData->new(%options);
+
+    KEY             DEFAULT                 USE
+    -------         -----------------       ------------------------------------
+    transcript      tamperdata.xml          Filename to read tamperdata xml from
+    timeout         60                      LWP connection timeout
+
+=back
 
 =cut
 
@@ -47,7 +58,7 @@ sub new {
     my $self = {};
 
     $self->{'transcript'} = $options{'transcript'} ? $options{'transcript'} : "tamperdata.xml";
-    $self->{'timeout'}    = $options{'timeout'} ? $options{'timeout'} : 10;
+    $self->{'timeout'}    = $options{'timeout'} ? $options{'timeout'} : 60;
 
     $_tamperxml = XMLin($self->{'transcript'});
     $_tamperagent = LWP::UserAgent->new;
@@ -112,14 +123,10 @@ sub response_filter {
 Eldar Marcussen, C<< <japh at justanotherhacker.com> >>
 
 =head1 BUGS
-The module is currently in its infancy please be aware that it currently only supports get requests and does not transmit headers
 
 Please report any bugs or feature requests to C<bug-www-tamperdata at rt.cpan.org>, or through
 the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=WWW-TamperData>.  I will be notified, and then you'll
 automatically be notified of progress on your bug as I make changes.
-
-
-
 
 =head1 SUPPORT
 
@@ -149,9 +156,6 @@ L<http://cpanratings.perl.org/d/WWW-TamperData>
 L<http://search.cpan.org/dist/WWW-TamperData>
 
 =back
-
-
-=head1 ACKNOWLEDGEMENTS
 
 
 =head1 COPYRIGHT & LICENSE
