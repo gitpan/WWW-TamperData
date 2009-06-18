@@ -12,12 +12,12 @@ WWW::TamperData - Replay tamper data xml files
 
 =head1 VERSION
 
-Version 0.06
+Version 0.08
 
 =cut
 
 # Globals
-our $VERSION = '0.06';
+our $VERSION = '0.08';
 our $AUTHOR = 'Eldar Marcussen - http://www.justanotherhacker.com';
 our $_tamperagent;
 our $_tamperxml;

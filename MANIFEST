@@ -6,4 +6,6 @@ lib/WWW/TamperData.pm
 t/00-load.t
 t/pod-coverage.t
 t/pod.t
+t/test.t
+t/test1.xml
 META.yml                                 Module meta-data (added by MakeMaker)
