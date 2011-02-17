@@ -4,37 +4,37 @@ use warnings;
 use strict;
 use Carp;
 use XML::Simple;
+use HTTP::Request;
 use LWP::UserAgent;
 
 =head1 NAME
 
-WWW::TamperData - Replay tamper data xml files
+WWW::TamperData - Replay tamper data XML files
 
 =head1 VERSION
 
-Version 0.08
+Version 0.09
 
 =cut
 
 # Globals
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 our $AUTHOR = 'Eldar Marcussen - http://www.justanotherhacker.com';
 our $_tamperagent;
 our $_tamperxml;
 
 =head1 SYNOPSIS
 
-Tamperdata is a firefox extension that lets you intercept or inspect browser requests and the server responses. WWW::TamperData can replay
-requests exported to an xml file from tamperdata.
-
-Replaying a file can be as simple as:
-
     use WWW::TamperData;
 
     my $foo = WWW::TamperData->new(transcript => "myfile.xml");
     my %data = $foo->replay();
 
-=head1 FUNCTIONS
+=head1 DESCRIPTION
+Tamperdata is a firefox extension that lets you intercept or inspect browser requests and the server responses. WWW::TamperData can replay
+requests exported to an XML file from Tamperdata.
+
+=head1 SUBROUTINES/METHODS
 
 =head2 new
 
@@ -44,10 +44,12 @@ Initializes the new object, it takes some options;
 
 =item WWW::TamperData->new(%options);
 
-    KEY             DEFAULT                 USE
-    -------         -----------------       ------------------------------------
-    transcript      tamperdata.xml          Filename to read tamperdata xml from
-    timeout         60                      LWP connection timeout
+    KEY               DEFAULT                 USE
+    ---------------   -----------------       --------------------------------------------------
+    transcript        undef                   Filename to read tamperdata xml from
+    timeout           60                      LWP connection timeout
+    requestfilter     undef                   Name of function to call before making the request
+    responsefilter    undef                   Name of function to call after making the request
 
 =back
 
@@ -57,10 +59,23 @@ sub new {
     my ($class, %options) = @_;
     my $self = {};
 
-    $self->{'transcript'} = $options{'transcript'} ? $options{'transcript'} : "tamperdata.xml";
+    if ($options{'transcript'}) {
+            $self->{'transcript'} = $options{'transcript'};
+            $_tamperxml = XMLin($self->{'transcript'});
+    }
+    
     $self->{'timeout'}    = $options{'timeout'} ? $options{'timeout'} : 60;
 
-    $_tamperxml = XMLin($self->{'transcript'});
+    if ($options{'requestfilter'}) {
+        $self->{requestfilter}{module} = caller;
+        $self->{requestfilter}{function} = $options{'requestfilter'};
+    }
+    
+    if ($options{'responsefilter'}) {
+        $self->{responsefilter}{module} = caller;
+        $self->{responsefilter}{function} = $options{'responsefilter'};
+    }
+
     $_tamperagent = LWP::UserAgent->new;
     $_tamperagent->timeout($self->{'timeout'});
     return bless $self, $class;
@@ -76,53 +91,87 @@ This function will replay all the requests provided in the xml file in sequentia
 sub replay {
     my $self = shift;
     if (ref($_tamperxml->{tdRequest}) eq 'ARRAY') {
-        for my $x (0..scalar($_tamperxml->{tdRequest})) {
-            $_tamperxml->{tdRequest}->[$x]->{uri} =~ s/%([0-9A-F][0-9A-F])/pack("c",hex($1))/gei;
-            my $request = HTTP::Request->new($_tamperxml->{tdRequest}->[$x]->{tdRequestMethod} => "$_tamperxml->{tdRequest}->[$x]->{uri}");
-            my $response = $_tamperagent->get($request);
-            if (!$response->is_success) {
-                croak $response->status_line;
-            }
+        for my $x (0..scalar $_tamperxml->{tdRequest}) {
+        $self->_make_request($_tamperxml->{tdRequest}->[$x]);
+
         }
     } else {
-        $_tamperxml->{tdRequest}->{uri} =~ s/%([0-9A-F][0-9A-F])/pack("c",hex($1))/gei;
-        my $request = HTTP::Request->new($_tamperxml->{tdRequest}->{tdRequestMethod} => "$_tamperxml->{tdRequest}->{uri}");
-        my $response = $_tamperagent->get($request);
-        if (!$response->is_success) {
-            croak $response->status_line;
-        }
+        $self->_make_request($_tamperxml->{tdRequest});
     }
+    return 1;
 }
 
-=head2 request_filter
+=head2 requestfilter
 
 Callback function that allows inspection/tampering of the uri and parameters before the request is performed.
 
 =cut
 
-sub request_filter {
+sub requestfilter {
     my ($self, $callback) = @_;
-    my ($caller) = caller;
-    $self->{request_filter} = $caller.$callback;
+    $self->{requestfilter}{module} = caller;
+    $self->{requestfilter}{function} = $callback;
+    return 1;
 }
 
-=head2 response_filter
+=head2 responsefilter
 
 Callback function that allows inspection of the response object.
 
 =cut
 
-sub response_filter {
+sub responsefilter {
     my ($self, $callback) = @_;
-    my ($caller) = caller;
-    $self->{request_filter} = $caller.$callback;
+    $self->{responsefilter}{module} = caller;
+    $self->{responsefilter}{function} = $callback;
+    return 1;
 }
+
+# Internal functions
+
+sub _make_request {
+    my ($self, $uriobj) = @_;
+    # TODO: Make this _process_request_filter() & support multiple filters
+    if ($self->{requestfilter}) {
+	my $rqfclass = $self->{requestfilter}{module};
+        my $rqfmethod = $self->{requestfilter}{function};
+        eval { $rqfclass->$rqfmethod($uriobj); };
+        carp "Request filter errors:\n $@" if ($@);
+    }
+    $uriobj->{uri} =~ s/%([0-9A-F][0-9A-F])/pack("c",hex($1))/gei;
+    my $request = HTTP::Request->new($uriobj->{tdRequestMethod} => "$uriobj->{uri}");
+    my $request_headers = $uriobj->{tdRequestHeaders}{tdRequestHeader};
+    foreach my $header (keys %{$request_headers} ) {
+        $request_headers->{$header}{content} =~ s/%([0-9A-F][0-9A-F])/pack("c",hex($1))/gei;
+        $request->push_header($header => $request_headers->{$header}{content});
+    }
+    my $response = $_tamperagent->request($request);
+    # TODO: Make this into _process_response_filter() & support multiple filters
+    if ($self->{responsefilter}) {
+        my $rpfclass = $self->{responsefilter}{module};
+        my $rpfmethod = $self->{responsefilter}{function};
+        eval { $rpfclass->$rpfmethod($uriobj, $response); };
+        carp "Response filter errors:\n $@\n" if ($@);
+    }
+    if (!$response->is_success) {
+        croak $response->status_line;
+    }
+    return $response;
+}
+
+sub _process_request_filter {
+}
+
+sub _process_response_filter {
+}
+
+
 
 =head1 AUTHOR
 
 Eldar Marcussen, C<< <japh at justanotherhacker.com> >>
 
-=head1 BUGS
+=head1 BUGS AND LIMITATIONS
 
 Please report any bugs or feature requests to C<bug-www-tamperdata at rt.cpan.org>, or through
 the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=WWW-TamperData>.  I will be notified, and then you'll
@@ -158,7 +207,7 @@ L<http://search.cpan.org/dist/WWW-TamperData>
 =back
 
 
-=head1 COPYRIGHT & LICENSE
+=head1 LICENSE AND COPYRIGHT
 
 Copyright 2009 Eldar Marcussen, all rights reserved.
 
